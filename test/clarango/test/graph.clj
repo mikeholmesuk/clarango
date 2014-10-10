@@ -1,67 +1,31 @@
-(ns clarango.main
-	(:require [clarango.core :as cla-core]
-				[clarango.collection :as collection]
-				[clarango.document :as document]
-        [clarango.database :as database]
-        [clarango.query :as query]
-        [clarango.graph :as graph]
-        [clarango.admin :as admin])
-	(:use clojure.pprint)
+(ns clarango.test.graph
+  (:require [clojure.test :refer :all]
+            [clarango.core :as cla-core]
+            [clarango.collection :as collection]
+            [clarango.database :as database]
+            [clarango.query :as query]
+            [clarango.graph :as graph]
+            [clarango.admin :as admin])
+  (:use clojure.pprint)
   (:use clarango.collection-ops)
   (:use clarango.core))
 
-
-(defn -main []
-
-  ;;;; this is a comprehensive usage example that tries to give an overview over all the features of the Clarango API
-  ;;;; it tries to make use of all methods available in Clarango, but sometimes methods are left out if they are 
-  ;;;; very similar to methods already used
-
-  (println "\n\n---- first create a database and a collection and make some document CRUD ----\n")
-
-  (println "\nconnect to defaults: localhost and port 8529")
+(defn setup []
   (cla-core/set-connection!)
-  (println "\ncreate Database 'test-DB'")
-  (pprint (database/create "test-DB" [{:username "test-user"}]))
-  (println "\ncreate Collection 'test-collection' in DB 'test-DB'")
-  (pprint (collection/create "test-collection" "test-DB"))
-  (println "\ndocument CRUD")
-  (pprint (document/create-with-key {:name "some test document"} :test-doc :test-collection :test-DB))
-  (pprint (document/update-by-key {:additional "some additional info"} :test-doc :test-collection :test-DB))
-  (pprint (document/get-by-key :test-doc :test-collection :test-DB))
-  (pprint (document/replace-by-example {:name "new version of our test document"} {:additional "some additional info"} :test-collection :test-DB))
-  
+  (database/create "GraphTestDB" []))
 
-  (println "\n\n---- now make use of the clojure idiomatic methods available in the namespace collection-ops to add and delete more content in the collection ----\n")
+(defn teardown []
+  (pprint (database/delete "GraphTestDB")))
 
-  (println "\nset default DB; this database will be used in the following methods without explicitely having to pass it")
-  (cla-core/set-default-db! "test-DB")
-  (println "\ncollection ops : assoc, dissoc, conj")
-  (pprint (cla-assoc! "test-collection" "new-document-1" {:description "some test document to test the clojure idiomatic collection methods" :key-type "given key"}))
-  (pprint (cla-conj! "test-collection" {:description "some test document to test the clojure idiomatic collection methods" :key-type "auto generated key"}))
-  (pprint (cla-get! "test-collection" "new-document-1"))
-  (pprint (cla-dissoc! "test-collection" "new-document-1"))
+(defn fixture [f]
+  (setup)
+  (f)
+  (teardown))
 
+(use-fixtures :once fixture)
 
-  (println "\n\n---- modify the collection ----\n")
-
-  (println "\nget information about the collection and a list of all documents inside it")
-  (pprint (collection/get-info "test-collection"))
-  (pprint (collection/get-all-documents "test-collection"))
-  (println "\nrename the collection and modify it's properties")
-  (pprint (collection/rename "new-name-test-collection" "test-collection"))
-  (pprint (collection/modify-properties {"waitForSync" true} "new-name-test-collection"))
-  (pprint (collection/get-extended-info-figures "new-name-test-collection"))
-  (println "\nunload and delete collection")
-  (pprint (collection/unload-mem "new-name-test-collection"))
-  (pprint (collection/delete "new-name-test-collection"))
-
-
-  (println "\n\n---- now create a graph, query it's vertices and perform some graph operations including a traversal ----\n")
-
-  (println "\nfirst create another Database 'GraphTestDB'")
-  (database/create "GraphTestDB" [])
-  (println "\nnow list all available databases")
+(deftest graph-test
+  (println "\nlist all available databases")
   (pprint (database/get-info-list))
   (println "\nperform next operations in the context of 'GraphTestDB'")
   (with-db "GraphTestDB"
@@ -120,8 +84,4 @@
   (println "\nLog")
   (println (admin/log {"upto" 3}))
   (println "\nRole:") ; This is >= V2
-  (pprint (admin/role))
-  
-  (println "\ndelete databases")
-  (pprint (database/delete "GraphTestDB"))
-  (database/delete "test-DB"))
+  (pprint (admin/role)))
